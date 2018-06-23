@@ -8,6 +8,6 @@ r = remote(HOST, PORT)
 r.sendline('yes')
 r.sendline('pZBbdBEnmlVHvWk')
 
-print('+++Logged in+++')
+print '+++Logged in+++'
 
 r.interactive()
