@@ -262,7 +262,7 @@ Sample:
 We are now ready to proceed.
 
 ## HTTP header injection, for the `/secret` Set-Cookie request
-As we can leak data from the HTML DOM using our CSS injection, we need a way to include the secret cookie to the HTML DOM. Fortunately, calling ```/secret newSecret``` will write define a new secret, set it as a cookie, and insert it into our HTML DOM. Looking at its server side implementation, we identify yet another vulnerability, as ```newSecret``` is not escaped. By defining a domain in addition to the value, we set a new cookie instead of overwriting the original flag-cookie. This will effectively print the real flag to the HTML DOM:
+As we can leak data from the HTML DOM using our CSS injection, we need a way to include the secret cookie to the HTML DOM. Fortunately, calling ```/secret newSecret``` will define a new secret, set it as a cookie, and insert it into our HTML DOM. Looking at its server side implementation, we identify yet another vulnerability, as ```newSecret``` is not escaped. By defining a domain in addition to the value, we set a new cookie instead of overwriting the original flag-cookie. This will effectively print the real flag to the HTML DOM:
 
 ```
 /secret deadbeef; Domain=foo.web.ctfcompetition.com
