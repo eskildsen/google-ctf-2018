@@ -270,6 +270,18 @@ As we can leak data from the HTML DOM using our CSS injection, we need a way to 
 /secret deadbeef; Domain=foo.web.ctfcompetition.com
 ```
 
+### Sample
+We can test this vulnerability on our own client, as it should allow us to first set a secret cookie, and then dump it to the DOM without changing it:
+
+```
+> /secret CTF{SOME-FLAG}
+> /secret deadbeef; Domain=foo.web.ctfcompetition.com
+```
+
+The first command results in the read squares, while the second command is responsible for the green, where we see the same secret as before. The header injection worked:
+![unchanged_cookie_to_dom](images/cookie_dom.png)
+
+
 ## Omitted break statement in switch, allows for multiple server commands (`/ban` followed by `/secret`)
 However, we have to make the admin call this command. And using the CSS to make a call, will not make the admin client process the response. By carefully inspecting the code, we can see, that the switch-statement does not contain any break-statements. This means, that a call to /ban will fall through to the /secret case, and be rejected by the regex unless carefully constructed. As the regex in each case does not require the keyword to be in the beginning of the string, it can be overwritten. E.g. the regex for matching the secret command should have been ```msg.match(/^\/secret (.+)/)``` instead of ```msg.match(/\/secret (.+)/)```. This means, that we can chain multiple commands, by a single call to the server!
 
