@@ -1,6 +1,20 @@
-# Google CTF 2018
+# Google CTF 2018 by Team Sweden
 
-## Challenges write ups
+## Solved challenges and write-ups
+Before the time was up, we managed to solve these challenges, giving us the 65th place:
+
+### Web
+- [Cat Chat](chals/catchat/writeup.md)
+- JS Safe 2.0
+
+### Crypto
+- DM Collision
+- Perfect Secrecy
+
+
+
+## All challenges in this CTF
+
 
 ### Crypto
 - Better ZIP - available/not available
@@ -32,7 +46,7 @@
 
 ### Web
 - BBS
-- Cat Chat
+- [Cat Chat](chals/catchat/writeup.md)
 - GCalc
 - JS Safe 2.0
 - Translate
